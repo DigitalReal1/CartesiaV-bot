@@ -21,9 +21,10 @@ PRONUNCIATION_DICT_ID = os.getenv('PRONUNCIATION_DICT_ID')
 
 if FFMPEG_PATH and not os.path.isabs(FFMPEG_PATH):
     FFMPEG_PATH = os.path.join(os.path.dirname(__file__), FFMPEG_PATH)
-if FFMPEG_PATH and not os.path.exists(FFMPEG_PATH):
-    # Fallback to bundled ffmpeg from imageio-ffmpeg
+if not FFMPEG_PATH or not os.path.exists(FFMPEG_PATH):
     FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
+
+print(f"Using ffmpeg: {FFMPEG_PATH}")
 
 print(f"Token loaded: {bool(TELEGRAM_BOT_TOKEN)} | Cartesia Key loaded: {bool(CARTESIA_API_KEY)}")
 
