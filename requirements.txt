@@ -1,0 +1,3 @@
+aiogram==3.27.0
+cartesia==3.0.2
+python-dotenv==1.1.0

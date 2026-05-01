@@ -14,7 +14,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 CARTESIA_API_KEY = os.getenv('CARTESIA_API_KEY')
-FFMPEG_PATH = os.getenv('FFMPEG_PATH', 'ffmpeg-8.1-essentials_build/bin/ffmpeg.exe')
+FFMPEG_PATH = os.getenv('FFMPEG_PATH', 'ffmpeg-8.1-essentials_build/ffmpeg-8.1-essentials_build/bin/ffmpeg.exe')
 CARTESIA_MODEL = 'sonic-2'
 PRONUNCIATION_DICT_ID = os.getenv('PRONUNCIATION_DICT_ID')
 
