@@ -1,2 +1,5 @@
 [phases.setup]
 nixPkgs = ["ffmpeg"]
+
+[start]
+cmd = "python cartesia_voice_bot.py"
