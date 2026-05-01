@@ -8,6 +8,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from cartesia import Cartesia
 from dotenv import load_dotenv
+import imageio_ffmpeg
 
 # Load environment variables from .env file
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -21,8 +22,8 @@ PRONUNCIATION_DICT_ID = os.getenv('PRONUNCIATION_DICT_ID')
 if FFMPEG_PATH and not os.path.isabs(FFMPEG_PATH):
     FFMPEG_PATH = os.path.join(os.path.dirname(__file__), FFMPEG_PATH)
 if FFMPEG_PATH and not os.path.exists(FFMPEG_PATH):
-    # Fallback to ffmpeg on PATH (common on Windows when installed system-wide)
-    FFMPEG_PATH = "ffmpeg"
+    # Fallback to bundled ffmpeg from imageio-ffmpeg
+    FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
 
 print(f"Token loaded: {bool(TELEGRAM_BOT_TOKEN)} | Cartesia Key loaded: {bool(CARTESIA_API_KEY)}")
 
