@@ -14,7 +14,7 @@ import imageio_ffmpeg
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-CARTESIA_API_KEY = os.getenv('CARTESIA_API_KEY')
+CARTESIA_API_KEY = (os.getenv('CARTESIA_API_KEY_3') or os.getenv('CARTESIA_API_KEY') or '').strip()
 FFMPEG_PATH = os.getenv('FFMPEG_PATH', 'ffmpeg-8.1-essentials_build/ffmpeg-8.1-essentials_build/bin/ffmpeg.exe')
 CARTESIA_MODEL = 'sonic-2'
 PRONUNCIATION_DICT_ID = os.getenv('PRONUNCIATION_DICT_ID')
@@ -97,6 +97,8 @@ VOICE_OPTIONS = {
     'Rae': '66c6b81c-ddb7-4892-bdd5-19b5a7be38e7',
     'Rupert': '0ad65e7f-006c-47cf-bd31-52279d487913',
     'Cole': '3e39e9a5-585c-4f5f-bac6-5e4905c51095',
+    'Barbie 2': 'b7482645-df2a-4106-8433-c4835acc2d7a',
+    'Yeol': '73ac8247-6d24-441a-9183-0794ec47b005',
 }
 user_voice_preference = {}
 DEFAULT_VOICE_NAME = 'Chan 2'
@@ -126,7 +128,7 @@ DEFAULT_LANGUAGE_NAME = "Auto-detect"
 
 # Default vibe settings
 user_vibe = {}
-DEFAULT_VIBE = {"speed": 1.0, "volume": 1.0, "emotion": "neutral"}
+DEFAULT_VIBE = {"speed": 0.96, "volume": 1.0, "emotion": "calm"}
 
 EMOTION_OPTIONS = [
     "neutral",
@@ -136,6 +138,7 @@ EMOTION_OPTIONS = [
     "calm",
     "sad",
     "angry",
+    "cry",
 ]
 
 
@@ -151,6 +154,25 @@ def _format_vibe(vibe: dict) -> str:
         f"speed: <code>{vibe['speed']:.2f}x</code>\n"
         f"volume: <code>{vibe['volume']:.2f}x</code>"
     )
+
+
+def _generation_config_from_vibe(vibe: dict) -> dict:
+    emotion = str(vibe.get("emotion", "neutral")).lower()
+    speed = float(vibe.get("speed", 1.0))
+    volume = float(vibe.get("volume", 1.0))
+
+    # Cartesia does not expose a dedicated "cry" label in generation_config,
+    # so map cry to sad with slightly lower speed and volume.
+    if emotion == "cry":
+        emotion = "sad"
+        speed = _clamp(speed, 0.6, 0.95)
+        volume = _clamp(volume, 0.5, 1.0)
+
+    return {
+        "emotion": emotion,
+        "speed": speed,
+        "volume": volume,
+    }
 
 
 def _vibe_keyboard(vibe: dict) -> InlineKeyboardMarkup:
@@ -185,7 +207,9 @@ async def cmd_start(message: types.Message):
         "Use /voice to change the voice.\n"
         "Use /model to choose the TTS model.\n"
         "Use /lang to choose transcript language.\n"
-        "Use /vibe to adjust speed/emotion/volume (interactive panel)"
+        "Use /vibe to adjust speed/emotion/volume (interactive panel).\n"
+        "Use /cry for a crying-style preset.\n"
+        "Use /checkvoices to test which voice IDs currently work on your account."
     )
 
 
@@ -312,6 +336,75 @@ async def set_vibe(message: types.Message):
     )
 
 
+@dp.message(Command("human"))
+async def set_human_preset(message: types.Message):
+    # Human preset = natural conversational baseline for most voices.
+    user_model_preference[message.from_user.id] = "Sonic 3 (Latest)"
+    user_vibe[message.from_user.id] = {
+        "emotion": "calm",
+        "speed": 0.96,
+        "volume": 1.0,
+    }
+    _save_prefs()
+    await message.answer(
+        "✅ Human-like preset enabled:\n"
+        "model: <code>Sonic 3 (Latest)</code>\n"
+        "emotion: <code>calm</code>\n"
+        "speed: <code>0.96x</code>\n"
+        "volume: <code>1.00x</code>\n"
+        "\nTip: choose Yeol or Barbie 2 for the most natural result.",
+        parse_mode="HTML",
+    )
+
+
+@dp.message(Command("cry"))
+async def set_cry_preset(message: types.Message):
+    user_model_preference[message.from_user.id] = "Sonic 3 (Latest)"
+    user_vibe[message.from_user.id] = {
+        "emotion": "cry",
+        "speed": 0.84,
+        "volume": 0.92,
+    }
+    _save_prefs()
+    await message.answer(
+        "😢 Cry preset enabled:\n"
+        "model: <code>Sonic 3 (Latest)</code>\n"
+        "emotion: <code>cry</code> (mapped to sad style)\n"
+        "speed: <code>0.84x</code>\n"
+        "volume: <code>0.92x</code>",
+        parse_mode="HTML",
+    )
+
+
+@dp.message(Command("checkvoices"))
+async def check_voices(message: types.Message):
+    await message.answer("Checking all voice IDs... this can take a few seconds.")
+
+    loop = asyncio.get_event_loop()
+    test_text = "Voice check"
+    test_vibe = DEFAULT_VIBE.copy()
+    model_id = "sonic-3-latest"
+
+    lines = []
+    for name, voice_id in VOICE_OPTIONS.items():
+        try:
+            await loop.run_in_executor(
+                None,
+                generate_tts_sync,
+                test_text,
+                voice_id,
+                test_vibe,
+                model_id,
+                PRONUNCIATION_DICT_ID,
+                None,
+            )
+            lines.append(f"✅ {name}")
+        except Exception as e:
+            lines.append(f"❌ {name} ({str(e)[:120]})")
+
+    await message.answer("Voice status:\n" + "\n".join(lines))
+
+
 @dp.callback_query(F.data == "vibe_noop")
 async def vibe_noop(call: types.CallbackQuery):
     await call.answer()
@@ -382,7 +475,7 @@ def generate_tts_sync(text, voice_id, vibe, model, pronunciation_dict_id=None, l
     output_format = {
         "container": "wav",
         "encoding": "pcm_f32le",
-        "sample_rate": 44100,
+        "sample_rate": 24000,
     }
 
     kwargs = {
@@ -399,11 +492,7 @@ def generate_tts_sync(text, voice_id, vibe, model, pronunciation_dict_id=None, l
 
     # Sonic-3 supports generation_config with speed/volume/emotion.
     if isinstance(model, str) and model.startswith("sonic-3"):
-        kwargs["generation_config"] = {
-            "emotion": vibe.get("emotion", "neutral"),
-            "speed": float(vibe.get("speed", 1.0)),
-            "volume": float(vibe.get("volume", 1.0)),
-        }
+        kwargs["generation_config"] = _generation_config_from_vibe(vibe)
 
     # Cartesia SDK returns a BinaryAPIResponse (not an iterator)
     response = client.tts.generate(**kwargs)
@@ -419,28 +508,34 @@ async def handle_text(message: types.Message):
             await message.answer("Please send some text.")
             return
 
-        voice_name = user_voice_preference.get(message.from_user.id, DEFAULT_VOICE_NAME)
-        voice_id = VOICE_OPTIONS[voice_name]
+        requested_voice_name = user_voice_preference.get(message.from_user.id, DEFAULT_VOICE_NAME)
+        voice_id = VOICE_OPTIONS.get(requested_voice_name, VOICE_OPTIONS[DEFAULT_VOICE_NAME])
         vibe = user_vibe.get(message.from_user.id, DEFAULT_VIBE.copy())
         model_name = user_model_preference.get(message.from_user.id, DEFAULT_MODEL_NAME)
         model_id = MODEL_OPTIONS.get(model_name, CARTESIA_MODEL)
         lang_name = user_language_preference.get(message.from_user.id, DEFAULT_LANGUAGE_NAME)
         language = LANGUAGE_OPTIONS.get(lang_name, None)
 
-        print(f"Active voice: {voice_name} | model={model_id} | language={language or 'auto'} | vibe={vibe}")
+        print(f"Requested voice: {requested_voice_name} | model={model_id} | language={language or 'auto'} | vibe={vibe}")
 
         # Run sync TTS in thread so we don't block the event loop
         loop = asyncio.get_event_loop()
-        audio_bytes = await loop.run_in_executor(
-            None,
-            generate_tts_sync,
-            text,
-            voice_id,
-            vibe,
-            model_id,
-            PRONUNCIATION_DICT_ID,
-            language,
-        )
+        try:
+            audio_bytes = await loop.run_in_executor(
+                None,
+                generate_tts_sync,
+                text,
+                voice_id,
+                vibe,
+                model_id,
+                PRONUNCIATION_DICT_ID,
+                language,
+            )
+        except Exception as voice_error:
+            raise RuntimeError(
+                f"Selected voice '{requested_voice_name}' failed: {voice_error}. "
+                "Run /checkvoices to see which IDs your account can currently use."
+            ) from voice_error
         print(f"Audio generated: {len(audio_bytes)} bytes")
 
         if len(audio_bytes) == 0:
