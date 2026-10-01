@@ -92,16 +92,15 @@ def _restore_prefs() -> None:
 
 # Voice options
 VOICE_OPTIONS = {
-    'Chan 2': 'bfe0a83d-c918-4c62-bb01-fb4b70e8cbc8',
     'Cathy': 'e8e5fffb-252c-436d-b842-8879b84445b6',
     'Rae': '66c6b81c-ddb7-4892-bdd5-19b5a7be38e7',
     'Rupert': '0ad65e7f-006c-47cf-bd31-52279d487913',
     'Cole': '3e39e9a5-585c-4f5f-bac6-5e4905c51095',
     'Barbie 2': 'b7482645-df2a-4106-8433-c4835acc2d7a',
-    'Yeol': '73ac8247-6d24-441a-9183-0794ec47b005',
+    'Yl': '73ac8247-6d24-441a-9183-0794ec47b005',
 }
 user_voice_preference = {}
-DEFAULT_VOICE_NAME = 'Chan 2'
+DEFAULT_VOICE_NAME = 'Yl'
 
 # Model options (matches Cartesia docs)
 MODEL_OPTIONS = {
