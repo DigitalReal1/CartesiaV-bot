@@ -84,7 +84,9 @@ def _restore_prefs() -> None:
                 continue
         return out
 
-    user_voice_preference.update(_to_int_keys(prefs.get("voice", {})))
+    restored_voices = _to_int_keys(prefs.get("voice", {}))
+    for uid, voice_name in restored_voices.items():
+        user_voice_preference[uid] = voice_name if voice_name in VOICE_OPTIONS else DEFAULT_VOICE_NAME
     user_model_preference.update(_to_int_keys(prefs.get("model", {})))
     user_language_preference.update(_to_int_keys(prefs.get("lang", {})))
     user_vibe.update(_to_int_keys(prefs.get("vibe", {})))
@@ -97,10 +99,10 @@ VOICE_OPTIONS = {
     'Rupert': '0ad65e7f-006c-47cf-bd31-52279d487913',
     'Cole': '3e39e9a5-585c-4f5f-bac6-5e4905c51095',
     'Barbie 2': 'b7482645-df2a-4106-8433-c4835acc2d7a',
-    'Yl': '73ac8247-6d24-441a-9183-0794ec47b005',
+    'Yeol': '73ac8247-6d24-441a-9183-0794ec47b005',
 }
 user_voice_preference = {}
-DEFAULT_VOICE_NAME = 'Yl'
+DEFAULT_VOICE_NAME = 'Yeol'
 
 # Model options (matches Cartesia docs)
 MODEL_OPTIONS = {
